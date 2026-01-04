@@ -13,6 +13,7 @@ from urllib.parse import urljoin
 from PyQt6.QtGui import QColor
 from pathlib import Path
 import json
+from datetime import datetime
 
 PREFIX = "00:1a:79"
 
@@ -124,7 +125,7 @@ class MainWindow(QWidget):
             sites = [s.strip() for s in sites_text.splitlines() if s.strip()]
             discovered_portals = probe_sites(sites)
             if discovered_portals:
-            portal = discovered_portals[0]
+                portal = discovered_portals[0]
         # save discovered portals to the instance for later testing
         self.discovered_portals = discovered_portals
         # populate portal list UI
@@ -235,6 +236,30 @@ class MainWindow(QWidget):
         (outdir / 'test_results.json').write_text(json.dumps(results, indent=2))
         QMessageBox.information(self, "Tests terminés", f"Tests terminés. Résultats sauvegardés dans:\n{outdir / 'test_results.json'}")
 
+    def populate_portal_list(self, portals=None):
+        # If portals is None, use current discovered + explicit portal
+        if portals is None:
+            portals = []
+            p_text = self.portal.text().strip()
+            if p_text:
+                portals.append(p_text)
+            portals += getattr(self, 'discovered_portals', []) or []
+            portals = [p for i, p in enumerate(portals) if p and p not in portals[:i]]
+        self.portal_list.clear()
+        for p in portals:
+            item = QListWidgetItem(p)
+            item.setData(1, p)
+            self.portal_list.addItem(item)
+
+    def color_portal_item(self, portal, ok):
+        # find item with matching text and color it
+        for i in range(self.portal_list.count()):
+            item = self.portal_list.item(i)
+            if item.text() == portal:
+                color = QColor(200, 255, 200) if ok else QColor(255, 200, 200)
+                item.setBackground(color)
+                return
+
 
 def probe_sites(sites):
     found = []
@@ -286,31 +311,6 @@ def test_portal_mac(portal, mac, headers=None):
         except Exception as e:
             attempts.append({"url": url, "error": str(e)})
     return attempts
-
-
-    def populate_portal_list(self, portals=None):
-        # If portals is None, use current discovered + explicit portal
-        if portals is None:
-            portals = []
-            p_text = self.portal.text().strip()
-            if p_text:
-                portals.append(p_text)
-            portals += getattr(self, 'discovered_portals', []) or []
-            portals = [p for i, p in enumerate(portals) if p and p not in portals[:i]]
-        self.portal_list.clear()
-        for p in portals:
-            item = QListWidgetItem(p)
-            item.setData(1, p)
-            self.portal_list.addItem(item)
-
-    def color_portal_item(self, portal, ok):
-        # find item with matching text and color it
-        for i in range(self.portal_list.count()):
-            item = self.portal_list.item(i)
-            if item.text() == portal:
-                color = QColor(200, 255, 200) if ok else QColor(255, 200, 200)
-                item.setBackground(color)
-                return
 
 
 if __name__ == "__main__":
